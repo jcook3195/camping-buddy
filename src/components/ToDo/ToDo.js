@@ -22,14 +22,40 @@ function ToDo() {
   const [currentTripId, setCurrentTripId] = useState("");
   const [campgrounds, setCampgrounds] = useState("");
   const [selectedCampground, setSelectedCampground] = useState("");
+  const [trips, setTrips] = useState("");
+  const [showTrips, setShowTrips] = useState(false);
+  const [bflChecklist, setBflChecklist] = useState(null);
+  const [afrChecklist, setAfrChecklist] = useState(null);
+  const [pckChecklist, setPckChecklist] = useState(null);
+  const [bflCheckedState, setBflCheckedState] = useState(null);
+  const [afrCheckedState, setAfrCheckedState] = useState(null);
+  const [pckCheckedState, setPckCheckedState] = useState(null);
 
   // database
   const tripsCollectionRef = collection(db, "trips");
   const campgroundsCollectionRef = collection(db, "campgrounds");
+  const bflCollectionRef = collection(db, "beforeLeavingChecklist");
+  const afrCollectionRef = collection(db, "afterReturningChecklist");
+  const pckCollectionRef = collection(db, "packingChecklist");
 
   const getCampgrounds = async () => {
     const data = await getDocs(campgroundsCollectionRef);
     setCampgrounds(data.docs.map((doc) => ({ ...doc.data(), id: doc.id })));
+  };
+
+  const getTrips = async () => {
+    const data = await getDocs(tripsCollectionRef);
+    setTrips(data.docs.map((doc) => ({ ...doc.data(), id: doc.id })));
+  };
+
+  const getChecklists = async () => {
+    const bflData = await getDocs(bflCollectionRef);
+    const afrData = await getDocs(afrCollectionRef);
+    const pckData = await getDocs(pckCollectionRef);
+
+    setBflChecklist(bflData.docs.map((doc) => ({ ...doc.data(), id: doc.id })));
+    setAfrChecklist(afrData.docs.map((doc) => ({ ...doc.data(), id: doc.id })));
+    setPckChecklist(pckData.docs.map((doc) => ({ ...doc.data(), id: doc.id })));
   };
 
   const onNewTripHandler = () => {
@@ -49,6 +75,11 @@ function ToDo() {
     setCurrentTripId(docRef.id);
   };
 
+  const onShowTripsHandler = () => {
+    setShowTrips(true);
+    console.log(trips);
+  };
+
   const onNameChangeHandler = (e) => {
     setTripName(e.target.value);
   };
@@ -62,9 +93,51 @@ function ToDo() {
     console.log(e.target.value);
   };
 
+  const onBflCheckChangeHandler = (position) => {
+    const updatedCheckedState = bflCheckedState.map((item, index) =>
+      index === position ? !item : item
+    );
+
+    setBflCheckedState(updatedCheckedState);
+  };
+
+  const onAfrCheckChangeHandler = (position) => {
+    const updatedCheckedState = afrCheckedState.map((item, index) =>
+      index === position ? !item : item
+    );
+
+    setAfrCheckedState(updatedCheckedState);
+  };
+
+  const onPckCheckChangeHandler = (position) => {
+    const updatedCheckedState = pckCheckedState.map((item, index) =>
+      index === position ? !item : item
+    );
+
+    setPckCheckedState(updatedCheckedState);
+  };
+
   useEffect(() => {
     getCampgrounds();
-  }, []);
+    getTrips();
+    getChecklists();
+  }, [currentTripId]);
+
+  useEffect(() => {
+    if (bflChecklist != null) {
+      setBflCheckedState(new Array(bflChecklist.length).fill(false));
+    }
+  }, [bflChecklist]);
+  useEffect(() => {
+    if (afrChecklist != null) {
+      setAfrCheckedState(new Array(afrChecklist.length).fill(false));
+    }
+  }, [afrChecklist]);
+  useEffect(() => {
+    if (pckChecklist != null) {
+      setPckCheckedState(new Array(pckChecklist.length).fill(false));
+    }
+  }, [pckChecklist]);
 
   return (
     <>
@@ -73,8 +146,25 @@ function ToDo() {
           <Button variant="primary" onClick={onNewTripHandler}>
             New Trip +
           </Button>{" "}
+          <Button variant="secondary" onClick={onShowTripsHandler}>
+            Load Trips
+          </Button>{" "}
         </Col>
       </Row>
+      {showTrips && (
+        <Row className="justify-content-center text-start">
+          <Col lg={6} xs={12} className="mt-4 mb-4">
+            {trips.map((i) => {
+              // console.log(i);
+              return (
+                <p key={i.id}>
+                  {i.name} - {i.date}
+                </p>
+              );
+            })}
+          </Col>
+        </Row>
+      )}
       {newTrip && (
         <>
           <Row className="justify-content-center text-center">
@@ -100,7 +190,7 @@ function ToDo() {
                   aria-label="Default select example"
                   onChange={onCampgroundSelectChangeHandler}
                 >
-                  <option defaultChecked disabled>
+                  <option selected disabled>
                     Select a Campground
                   </option>
 
@@ -138,24 +228,27 @@ function ToDo() {
                 <Col lg={6} xs={12} className="mt-4 mb-4">
                   <h2>Packing List</h2>
                   <form className="text-start">
-                    <div className="mb-3 form-check">
-                      <input
-                        type="checkbox"
-                        className="form-check-input"
-                        id="exampleCheck1"
-                        style={{
-                          float: "none",
-                          marginRight: ".5rem",
-                          borderColor: "#000",
-                        }}
-                      />
-                      <label
-                        className="form-check-label"
-                        htmlFor="exampleCheck1"
-                      >
-                        Check me out
-                      </label>
-                    </div>
+                    {pckChecklist.map((item, index) => (
+                      <div className="mb-3 form-check" key={index}>
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          id="exampleCheck1"
+                          style={{
+                            float: "none",
+                            marginRight: ".5rem",
+                            borderColor: "#000",
+                          }}
+                          onChange={onPckCheckChangeHandler}
+                        />
+                        <label
+                          className="form-check-label"
+                          htmlFor="exampleCheck1"
+                        >
+                          {item.item}
+                        </label>
+                      </div>
+                    ))}
                   </form>
                 </Col>
               </Row>
@@ -163,24 +256,27 @@ function ToDo() {
                 <Col lg={6} xs={12} className="mt-4 mb-4">
                   <h2>Before Leaving</h2>
                   <form className="text-start">
-                    <div className="mb-3 form-check">
-                      <input
-                        type="checkbox"
-                        className="form-check-input"
-                        id="exampleCheck2"
-                        style={{
-                          float: "none",
-                          marginRight: ".5rem",
-                          borderColor: "#000",
-                        }}
-                      />
-                      <label
-                        className="form-check-label"
-                        htmlFor="exampleCheck2"
-                      >
-                        Check me out
-                      </label>
-                    </div>
+                    {bflChecklist.map((item, index) => (
+                      <div className="mb-3 form-check" key={index}>
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          id="exampleCheck1"
+                          style={{
+                            float: "none",
+                            marginRight: ".5rem",
+                            borderColor: "#000",
+                          }}
+                          onChange={onBflCheckChangeHandler}
+                        />
+                        <label
+                          className="form-check-label"
+                          htmlFor="exampleCheck1"
+                        >
+                          {item.item}
+                        </label>
+                      </div>
+                    ))}
                   </form>
                 </Col>
               </Row>
@@ -188,24 +284,27 @@ function ToDo() {
                 <Col lg={6} xs={12} className="mt-4 mb-4">
                   <h2>After Returning</h2>
                   <form className="text-start">
-                    <div className="mb-3 form-check">
-                      <input
-                        type="checkbox"
-                        className="form-check-input"
-                        id="exampleCheck3"
-                        style={{
-                          float: "none",
-                          marginRight: ".5rem",
-                          borderColor: "#000",
-                        }}
-                      />
-                      <label
-                        className="form-check-label"
-                        htmlFor="exampleCheck3"
-                      >
-                        Check me out
-                      </label>
-                    </div>
+                    {afrChecklist.map((item, index) => (
+                      <div className="mb-3 form-check" key={index}>
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          id="exampleCheck1"
+                          style={{
+                            float: "none",
+                            marginRight: ".5rem",
+                            borderColor: "#000",
+                          }}
+                          onChange={onAfrCheckChangeHandler}
+                        />
+                        <label
+                          className="form-check-label"
+                          htmlFor="exampleCheck1"
+                        >
+                          {item.item}
+                        </label>
+                      </div>
+                    ))}
                   </form>
                 </Col>
               </Row>
